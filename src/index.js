@@ -1,5 +1,5 @@
 //#region Constants
-const MODEL = "tts-1";
+var modelToUse = "tts-1";
 const OPENAPI_URL = "https://api.openai.com/v1";
 //#endregion
 
@@ -39,7 +39,7 @@ const delay = (ms) => {
 //#endregion
 
 const generateCacheKey = async (text, voice, type = "audio") => {
-  return `${type}-${MODEL}-${voice}-${await sha256(text)}`;
+  return `${type}-${modelToUse}-${voice}-${await sha256(text)}`;
 };
 
 // Function to split the text into meaningful chunks
@@ -107,7 +107,7 @@ const fetchAndConcatenateAudio = async (
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: MODEL,
+          model: modelToUse,
           input: chunk,
           voice,
         }),
@@ -210,6 +210,29 @@ const updatePricing = async () => {
   ).innerText = `Convert to Speech (¢${cents.toFixed(2)})`;
 };
 
+const updateModel = async () => {
+  const text = document.getElementById("textInput").value;
+  const selectedModel = document.getElementById("modelSelect").value;
+  modelToUse = selectedModel;
+
+  const cacheKey = await generateCacheKey(text, voice);
+
+  // Check cache first
+  let cachedBase64 = localStorage.getItem(cacheKey);
+  if (cachedBase64) {
+    document.getElementById("convertBtn").innerText =
+      "Convert to Speech (cached)";
+    return;
+  }
+
+  const pricePerMillion = 15.0;
+  const price = (text.length / 1000000) * pricePerMillion;
+  const cents = price * 100;
+  document.getElementById(
+    "convertBtn"
+  ).innerText = `Convert to Speech (¢${cents.toFixed(2)})`;
+};
+
 const init = () => {
   // Load the API key from cache
   const apiKey = localStorage.getItem("apiKey");
@@ -221,6 +244,9 @@ const init = () => {
   document
     .getElementById("voiceSelect")
     .addEventListener("change", updatePricing);
+  document
+    .getElementById("modelSelect")
+    .addEventListener("change", updateModel);
   document.getElementById("convertBtn").addEventListener("click", convert);
 };
 
