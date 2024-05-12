@@ -8,7 +8,7 @@ Minimal yet working prototype. Feel free to propose features and contribute PRs!
 
 ## Current Features
 
-- Select different voices
+- Select different voices and models
 - Automatic division of long textes
 - Price display
 - Caching of audio files (in local browser storage)
