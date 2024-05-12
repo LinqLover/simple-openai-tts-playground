@@ -1,5 +1,9 @@
 //#region Constants
 const OPENAPI_URL = "https://api.openai.com/v1";
+const PRICES_PER_MILLION = {
+  "tts-1": 15.0,
+  "tts-1-hd": 30.0,
+};
 //#endregion
 
 //#region Utils
@@ -201,7 +205,7 @@ const updatePricing = async () => {
     return;
   }
 
-  const pricePerMillion = 15.0;
+  const pricePerMillion = PRICES_PER_MILLION[model];
   const price = (text.length / 1000000) * pricePerMillion;
   const cents = price * 100;
   document.getElementById(
