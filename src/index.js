@@ -1,5 +1,4 @@
 //#region Constants
-var modelToUse = "tts-1";
 const OPENAPI_URL = "https://api.openai.com/v1";
 //#endregion
 
@@ -38,8 +37,8 @@ const delay = (ms) => {
 };
 //#endregion
 
-const generateCacheKey = async (text, voice, type = "audio") => {
-  return `${type}-${modelToUse}-${voice}-${await sha256(text)}`;
+const generateCacheKey = async (text, config, type = "audio") => {
+  return `${type}-${config.model}-${config.voice}-${await sha256(text)}`;
 };
 
 // Function to split the text into meaningful chunks
@@ -70,8 +69,7 @@ const splitText = (text) => {
 // Function to handle API requests and concatenating audio with rate limiting
 const fetchAndConcatenateAudio = async (
   textChunks,
-  voice,
-  apiKey,
+  config,
   progressFn = null
 ) => {
   const rpm = 100; // Maximum requests per minute
@@ -85,7 +83,7 @@ const fetchAndConcatenateAudio = async (
     }
 
     const chunk = textChunks[i];
-    const cacheKey = await generateCacheKey(chunk, voice, "chunk");
+    const cacheKey = await generateCacheKey(chunk, config, "chunk");
 
     let cachedBlob = null;
 
@@ -103,13 +101,13 @@ const fetchAndConcatenateAudio = async (
       const response = await fetch(`${OPENAPI_URL}/audio/speech`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: `Bearer ${config.apiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: modelToUse,
+          model: config.model,
           input: chunk,
-          voice,
+          voice: config.voice,
         }),
       });
 
@@ -138,9 +136,10 @@ const fetchAndConcatenateAudio = async (
 const convert = async () => {
   const text = document.getElementById("textInput").value;
   const voice = document.getElementById("voiceSelect").value;
+  const model = document.getElementById("modelSelect").value;
   const apiKey = document.getElementById("apiKeyInput").value;
 
-  const cacheKey = await generateCacheKey(text, voice);
+  const cacheKey = await generateCacheKey(text, { voice, model });
 
   // Check cache first
   let cachedBase64 = localStorage.getItem(cacheKey);
@@ -161,8 +160,7 @@ const convert = async () => {
     const textChunks = splitText(text);
     audioBlob = await fetchAndConcatenateAudio(
       textChunks,
-      voice,
-      apiKey,
+      { voice, model, apiKey },
       (progress) => {
         button.innerText = `Converting... (${(progress * 100).toFixed(0)}%)`;
       }
@@ -191,31 +189,9 @@ const convert = async () => {
 const updatePricing = async () => {
   const text = document.getElementById("textInput").value;
   const voice = document.getElementById("voiceSelect").value;
+  const model = document.getElementById("modelSelect").value;
 
-  const cacheKey = await generateCacheKey(text, voice);
-
-  // Check cache first
-  let cachedBase64 = localStorage.getItem(cacheKey);
-  if (cachedBase64) {
-    document.getElementById("convertBtn").innerText =
-      "Convert to Speech (cached)";
-    return;
-  }
-
-  const pricePerMillion = 15.0;
-  const price = (text.length / 1000000) * pricePerMillion;
-  const cents = price * 100;
-  document.getElementById(
-    "convertBtn"
-  ).innerText = `Convert to Speech (¢${cents.toFixed(2)})`;
-};
-
-const updateModel = async () => {
-  const text = document.getElementById("textInput").value;
-  const selectedModel = document.getElementById("modelSelect").value;
-  modelToUse = selectedModel;
-
-  const cacheKey = await generateCacheKey(text, voice);
+  const cacheKey = await generateCacheKey(text, { model, voice });
 
   // Check cache first
   let cachedBase64 = localStorage.getItem(cacheKey);
@@ -246,7 +222,7 @@ const init = () => {
     .addEventListener("change", updatePricing);
   document
     .getElementById("modelSelect")
-    .addEventListener("change", updateModel);
+    .addEventListener("change", updatePricing);
   document.getElementById("convertBtn").addEventListener("click", convert);
 };
 
