@@ -42,7 +42,7 @@ const delay = (ms) => {
 //#endregion
 
 const generateCacheKey = async (text, config, type = "audio") => {
-  return `${type}-${config.model}-${config.voice}-${await sha256(text)}`;
+  return `${type}-${config.model}-${config.voice}-${config.speed}-${await sha256(text)}`;
 };
 
 // Function to split the text into meaningful chunks
@@ -112,6 +112,7 @@ const fetchAndConcatenateAudio = async (
           model: config.model,
           input: chunk,
           voice: config.voice,
+          speed: config.speed,
         }),
       });
 
@@ -142,8 +143,9 @@ const convert = async () => {
   const voice = document.getElementById("voiceSelect").value;
   const model = document.getElementById("modelSelect").value;
   const apiKey = document.getElementById("apiKeyInput").value;
+  const speed = parseFloat(document.getElementById("speedInput").value);
 
-  const cacheKey = await generateCacheKey(text, { voice, model });
+  const cacheKey = await generateCacheKey(text, { voice, model, speed });
 
   // Check cache first
   let cachedBase64 = localStorage.getItem(cacheKey);
@@ -164,7 +166,7 @@ const convert = async () => {
     const textChunks = splitText(text);
     audioBlob = await fetchAndConcatenateAudio(
       textChunks,
-      { voice, model, apiKey },
+      { voice, model, apiKey, speed },
       (progress) => {
         button.innerText = `Converting... (${(progress * 100).toFixed(0)}%)`;
       }
@@ -194,8 +196,12 @@ const updatePricing = async () => {
   const text = document.getElementById("textInput").value;
   const voice = document.getElementById("voiceSelect").value;
   const model = document.getElementById("modelSelect").value;
+  const speed = document.getElementById("speedInput").value;
 
-  const cacheKey = await generateCacheKey(text, { model, voice });
+  // Also update speed label with speed
+  document.getElementById("speedLabel").innerText = `Speed (${speed}x)`;
+
+  const cacheKey = await generateCacheKey(text, { model, voice, speed });
 
   // Check cache first
   let cachedBase64 = localStorage.getItem(cacheKey);
@@ -213,7 +219,7 @@ const updatePricing = async () => {
   ).innerText = `Convert to Speech (¢${cents.toFixed(2)})`;
 };
 
-const init = () => {
+const init = async () => {
   // Load the API key from cache
   const apiKey = localStorage.getItem("apiKey");
   if (apiKey) {
@@ -227,7 +233,18 @@ const init = () => {
   document
     .getElementById("modelSelect")
     .addEventListener("change", updatePricing);
-  document.getElementById("convertBtn").addEventListener("click", convert);
+  document
+    .getElementById("speedInput")
+    .addEventListener("input", updatePricing);
+  document
+    .getElementById("convertBtn")
+    .addEventListener("click", convert);
+
+  document.getElementById("speedInput").min = "0.25";
+  document.getElementById("speedInput").max = "4.0";
+  document.getElementById("speedInput").step = "0.05";
+  document.getElementById("speedInput").value = "1.0";
+  await updatePricing();
 };
 
 init();
