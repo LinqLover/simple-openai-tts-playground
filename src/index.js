@@ -80,7 +80,9 @@ const fetchAndConcatenateAudio = async (
   const interval = 60000 / rpm; // Time between requests in milliseconds
 
   let audioBlobs = [];
-  progressFn(0);
+  if (progressFn) {
+    progressFn(0);
+  }
   for (let i = 0; i < textChunks.length; i++) {
     if (progressFn) {
       progressFn(i / textChunks.length);
@@ -91,11 +93,13 @@ const fetchAndConcatenateAudio = async (
 
     let cachedBlob = null;
 
-    let cachedBase64 = localStorage.getItem(cacheKey);
+    const cachedBase64 = localStorage.getItem(cacheKey);
     if (cachedBase64) {
       cachedBlob = base64ToBlob(cachedBase64);
     }
-    if (!cachedBlob) {
+
+    let chunkBlob = cachedBlob;
+    if (!chunkBlob) {
       if (i > 0 && i % rpm === 0) {
         await delay(60000); // Wait for a minute after 100 requests
       } else if (i > 0) {
@@ -130,10 +134,13 @@ const fetchAndConcatenateAudio = async (
         console.error("Failed to cache audio file:", error);
       }
 
-      audioBlobs.push(blob);
+      chunkBlob = blob;
     }
+    audioBlobs.push(chunkBlob);
   }
-  progressFn(1);
+  if (progressFn) {
+    progressFn(1);
+  }
 
   return new Blob(audioBlobs, { type: "audio/mp3" });
 };
